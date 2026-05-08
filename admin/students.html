@@ -64,7 +64,7 @@
 SkoolAuth.require(["admin"]);
 SkoolUI.topbar("Students");
 
-var list = document.getElementById("list");
+var listEl = document.getElementById("list");
 var form = document.getElementById("f");
 var saveBtn = document.getElementById("saveBtn");
 var cancelBtn = document.getElementById("cancelBtn");
@@ -72,12 +72,19 @@ var formTitle = document.getElementById("formTitle");
 var DATA = [];
 var inFlight = false;
 
+// Safe setter — form.name / form.action etc. shadow inputs of the same name,
+// so always go through .elements[].
+function setVal(name, val) {
+  var el = form.elements[name];
+  if (el) el.value = (val == null ? "" : val);
+}
+
 async function load() {
   try {
     var d = await SkoolAPI.api("students.list", {});
     DATA = d.students || [];
     render();
-  } catch (e) { list.textContent = "Failed: " + e.message; }
+  } catch (e) { listEl.textContent = "Failed: " + e.message; }
 }
 
 function render() {
@@ -85,7 +92,7 @@ function render() {
   var rows = DATA.filter(function (s) {
     return !q || (s.name + " " + s.class + " " + s.section + " " + s.roll_no).toLowerCase().indexOf(q) >= 0;
   });
-  if (!rows.length) { list.textContent = "No students."; return; }
+  if (!rows.length) { listEl.textContent = "No students."; return; }
   var html = '<div class="tbl-wrap"><table class="tbl">';
   html += '<thead><tr><th>Name</th><th>Class</th><th>Roll</th><th>Parent</th><th></th></tr></thead><tbody>';
   for (var i = 0; i < rows.length; i++) {
@@ -96,39 +103,41 @@ function render() {
       + '<td data-l="Roll">' + SkoolUI.esc(s.roll_no) + '</td>'
       + '<td data-l="Parent">' + SkoolUI.esc(s.parent_name || "") + ' ' + SkoolUI.esc(s.parent_phone || "") + '</td>'
       + '<td class="row-actions">'
-        + '<button class="secondary" data-edit="' + SkoolUI.esc(s.student_id) + '">Edit</button> '
-        + '<button class="danger" data-del="' + SkoolUI.esc(s.student_id) + '">Delete</button>'
+        + '<button type="button" class="secondary" data-edit="' + SkoolUI.esc(s.student_id) + '">Edit</button> '
+        + '<button type="button" class="danger" data-del="' + SkoolUI.esc(s.student_id) + '">Delete</button>'
       + '</td></tr>';
   }
   html += '</tbody></table></div>';
-  list.innerHTML = html;
+  listEl.innerHTML = html;
 }
 
 document.getElementById("q").oninput = render;
 
-list.addEventListener("click", async function (e) {
-  var ed = e.target.getAttribute && e.target.getAttribute("data-edit");
-  var dl = e.target.getAttribute && e.target.getAttribute("data-del");
+listEl.addEventListener("click", async function (e) {
+  var t = e.target.closest ? e.target.closest("button") : e.target;
+  if (!t) return;
+  var ed = t.getAttribute && t.getAttribute("data-edit");
+  var dl = t.getAttribute && t.getAttribute("data-del");
   if (ed) {
-    var s = DATA.find(function (x) { return x.student_id == ed; });
+    var s = DATA.find(function (x) { return String(x.student_id) === String(ed); });
     if (!s) return;
-    form.student_id.value = s.student_id || "";
-    form.name.value = s.name || "";
-    form.roll_no.value = s.roll_no || "";
-    form.class.value = s.class || "";
-    form.section.value = s.section || "";
-    form.dob.value = s.dob || "";
-    form.parent_name.value = s.parent_name || "";
-    form.parent_phone.value = s.parent_phone || "";
-    form.parent_user_id.value = s.parent_user_id || "";
-    form.parent_username.value = "";
-    form.parent_password.value = "";
-    form.photo_url.value = s.photo_url || "";
+    setVal("student_id",     s.student_id);
+    setVal("name",           s.name);
+    setVal("roll_no",        s.roll_no);
+    setVal("class",          s.class);
+    setVal("section",        s.section);
+    setVal("dob",            s.dob);
+    setVal("parent_name",    s.parent_name);
+    setVal("parent_phone",   s.parent_phone);
+    setVal("parent_user_id", s.parent_user_id);
+    setVal("parent_username","");
+    setVal("parent_password","");
+    setVal("photo_url",      s.photo_url);
     formTitle.textContent = "Edit Student — " + s.name;
     cancelBtn.style.display = "";
     window.scrollTo({ top: 0, behavior: "smooth" });
   } else if (dl) {
-    var s2 = DATA.find(function (x) { return x.student_id == dl; });
+    var s2 = DATA.find(function (x) { return String(x.student_id) === String(dl); });
     if (!s2) return;
     if (!confirm('Delete student "' + s2.name + '" (Class ' + s2.class + '-' + s2.section + ', Roll ' + s2.roll_no + ')?')) return;
     try {
@@ -141,7 +150,7 @@ list.addEventListener("click", async function (e) {
 cancelBtn.onclick = resetForm;
 function resetForm() {
   form.reset();
-  form.student_id.value = "";
+  setVal("student_id", "");
   formTitle.textContent = "Add Student";
   cancelBtn.style.display = "none";
 }
@@ -157,10 +166,11 @@ form.addEventListener("submit", async function (e) {
   var fd = new FormData(form);
   var student = {};
   var extras = { parent_username: "", parent_password: "" };
+  // Always include student_id (even if empty) so backend can tell update vs new.
   fd.forEach(function (v, k) {
+    if (k in extras) { if (v) extras[k] = v; return; }
     if (v === "" || v == null) return;
-    if (k in extras) extras[k] = v;
-    else student[k] = v;
+    student[k] = v;
   });
 
   try {
