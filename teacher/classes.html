@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>My Classes · SkoolMark</title>
+<link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/auth.js"></script>
+<script src="../assets/js/ui.js"></script>
+
+<div class="app">
+  <div id="content"></div>
+</div>
+
+<script>
+const me = SkoolAuth.require(["teacher", "admin"]);
+SkoolUI.topbar("My Classes");
+
+(async function () {
+  const root = document.getElementById("content");
+  root.innerHTML = `
+    <div class="card">
+      <h2>Take Attendance</h2>
+      <div class="muted" id="dateLine"></div>
+      <div style="height:10px"></div>
+      <div class="row">
+        <select id="cls"></select>
+        <select id="sec"></select>
+        <input type="date" id="dt" />
+      </div>
+      <div style="height:12px"></div>
+      <button id="go">Open class →</button>
+    </div>
+    <div class="card">
+      <h2>Quick links</h2>
+      <div class="row">
+        <a class="badge green" href="../shared/marks.html">Marks</a>
+        <a class="badge yellow" href="../shared/fees.html">Fees</a>
+        <a class="badge" href="../shared/idcard.html">ID Card</a>
+      </div>
+    </div>
+  `;
+
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById("dt").value = today;
+  document.getElementById("dateLine").textContent =
+    "Today: " + new Date().toDateString();
+
+  // For simplicity, hardcode common classes/sections; in production fetch from ClassTeacher.
+  const classes  = ["1","2","3","4","5","6","7","8","9","10","11","12"];
+  const sections = ["A","B","C","D"];
+  const cls = document.getElementById("cls"); const sec = document.getElementById("sec");
+  classes.forEach(c => cls.appendChild(new Option("Class " + c, c)));
+  sections.forEach(s => sec.appendChild(new Option("Section " + s, s)));
+
+  document.getElementById("go").onclick = () => {
+    const params = new URLSearchParams({
+      class: cls.value, section: sec.value, date: document.getElementById("dt").value
+    });
+    location.href = "attendance.html?" + params.toString();
+  };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Attendance · SkoolMark</title>
+<link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/auth.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/attendance.js"></script>
+
+<div class="app">
+  <div class="card" id="hdr">
+    <div class="row" style="align-items:center">
+      <div>
+        <h2 id="title">Attendance</h2>
+        <div class="muted" id="sub"></div>
+      </div>
+      <div style="text-align:right">
+        <div id="counts" class="muted">—</div>
+      </div>
+    </div>
+    <div style="height:10px"></div>
+    <div class="row">
+      <button class="secondary" id="allP">Mark all Present</button>
+      <button class="secondary" id="allA">Mark all Absent</button>
+      <input id="search" placeholder="Search name / roll" />
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="card no-print" style="position:sticky;bottom:10px;z-index:5">
+    <button id="submit" style="width:100%;font-size:18px">✅ Submit Attendance</button>
+    <div class="muted" id="status" style="margin-top:8px;text-align:center"></div>
+  </div>
+</div>
+
+<script>
+const me = SkoolAuth.require(["teacher", "admin"]);
+SkoolUI.topbar("Attendance");
+
+const params = new URLSearchParams(location.search);
+const klass = params.get("class");
+const section = params.get("section");
+const date = params.get("date") || new Date().toISOString().slice(0, 10);
+
+if (!klass || !section) { location.replace("classes.html"); }
+
+document.getElementById("title").textContent = `Class ${klass}-${section}`;
+document.getElementById("sub").textContent = new Date(date).toDateString();
+
+const grid = document.getElementById("grid");
+const STATE = { roster: [], locked: false };
+
+function render() {
+  const q = document.getElementById("search").value.toLowerCase().trim();
+  grid.innerHTML = "";
+  let P = 0, A = 0, L = 0;
+  STATE.roster.forEach((s, i) => {
+    if (s.status === "P") P++; else if (s.status === "A") A++; else if (s.status === "L") L++;
+    if (q && !(String(s.name).toLowerCase().includes(q) || String(s.roll_no).includes(q))) return;
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    tile.dataset.st = s.status;
+    tile.innerHTML = `
+      <span class="st"></span>
+      <img src="${s.photo_url || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect fill='%23eef2f7' width='64' height='64'/><text x='32' y='38' text-anchor='middle' font-size='22' fill='%2394a3b8'>" + (s.name || "?")[0] + "</text></svg>"}" loading="lazy" alt="" />
+      <div class="nm">${SkoolUI.esc(s.name)}</div>
+      <div class="rl">Roll ${SkoolUI.esc(s.roll_no)}</div>`;
+    tile.onclick = () => {
+      if (STATE.locked) { SkoolUI.toast("Already submitted", "err"); return; }
+      s.status = s.status === "P" ? "A" : s.status === "A" ? "L" : "P";
+      render();
+    };
+    grid.appendChild(tile);
+  });
+  document.getElementById("counts").textContent = `${P} Present · ${A} Absent · ${L} Late`;
+}
+
+document.getElementById("allP").onclick = () => { if (STATE.locked) return; STATE.roster.forEach(s => s.status="P"); render(); };
+document.getElementById("allA").onclick = () => { if (STATE.locked) return; STATE.roster.forEach(s => s.status="A"); render(); };
+document.getElementById("search").oninput = render;
+
+document.getElementById("submit").onclick = async () => {
+  if (STATE.locked) { SkoolUI.toast("Already submitted", "err"); return; }
+  const payload = {
+    class: klass, section, date,
+    rows: STATE.roster.map(s => ({ student_id: s.student_id, status: s.status }))
+  };
+  const btn = document.getElementById("submit");
+  btn.disabled = true; btn.textContent = "Saving…";
+  try {
+    if (!navigator.onLine) {
+      SkoolAttendance.enqueue(payload);
+      SkoolUI.toast("Saved offline. Will sync when online.", "ok");
+      STATE.locked = true; render();
+      return;
+    }
+    const res = await SkoolAPI.api("attendance.submit", payload);
+    SkoolUI.toast("✅ Saved. " + res.saved + " students.", "ok");
+    STATE.locked = true; render();
+  } catch (e) {
+    if (e.message === "NETWORK") {
+      SkoolAttendance.enqueue(payload);
+      SkoolUI.toast("Network down. Saved offline.", "ok");
+      STATE.locked = true; render();
+    } else if (e.message === "ALREADY_SUBMITTED") {
+      SkoolUI.toast("Already submitted today.", "err");
+      STATE.locked = true; render();
+    } else if (e.message === "AUTO_LOCKED") {
+      SkoolUI.toast("Auto-locked after 10:30 AM. Ask admin.", "err");
+    } else {
+      SkoolUI.toast("Failed: " + e.message, "err");
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = "✅ Submit Attendance";
+  }
+};
+
+(async function load() {
+  // skeleton
+  grid.innerHTML = Array(12).fill('<div class="tile"><div class="skeleton" style="height:64px;width:64px;border-radius:50%;margin:0 auto"></div><div class="skeleton" style="width:80%;margin:10px auto"></div></div>').join("");
+  try {
+    const data = await SkoolAPI.api("attendance.getClassRoster", { class: klass, section, date });
+    STATE.roster = data.roster;
+    STATE.locked = !!data.alreadySubmitted;
+    if (STATE.locked) {
+      document.getElementById("status").textContent = "✅ Already submitted for this date.";
+      document.getElementById("submit").disabled = true;
+    }
+    render();
+  } catch (e) {
+    grid.innerHTML = "";
+    SkoolUI.toast("Failed to load: " + e.message, "err");
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Students · SkoolMark</title>
+<link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/auth.js"></script>
+<script src="../assets/js/ui.js"></script>
+
+<div class="app">
+  <div class="card">
+    <h2>Add / Update Student</h2>
+    <form id="f">
+      <div class="row">
+        <input name="student_id" placeholder="ID (leave blank for new)" />
+        <input name="name" placeholder="Full name" required />
+        <input name="roll_no" placeholder="Roll no" required />
+      </div>
+      <div style="height:8px"></div>
+      <div class="row">
+        <input name="class" placeholder="Class (e.g. 5)" required />
+        <input name="section" placeholder="Section (e.g. B)" required />
+        <input name="dob" placeholder="DOB YYYY-MM-DD" />
+      </div>
+      <div style="height:8px"></div>
+      <div class="row">
+        <input name="parent_user_id" placeholder="Parent user_id (in Users sheet)" />
+        <input name="parent_name" placeholder="Parent name" />
+        <input name="parent_phone" placeholder="Parent phone" />
+      </div>
+      <div style="height:8px"></div>
+      <input name="photo_url" placeholder="Photo URL (Drive / public)" />
+      <div style="height:10px"></div>
+      <button type="submit">Save</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <h2 style="flex:1">Students</h2>
+      <input id="q" placeholder="Search…" style="max-width:240px" />
+    </div>
+    <div id="list" class="muted">Loading…</div>
+  </div>
+</div>
+
+<script>
+SkoolAuth.require(["admin"]);
+SkoolUI.topbar("Students");
+
+const list = document.getElementById("list");
+let DATA = [];
+
+async function load() {
+  try {
+    const d = await SkoolAPI.api("students.list", {});
+    DATA = d.students || [];
+    render();
+  } catch (e) { list.textContent = "Failed: " + e.message; }
+}
+function render() {
+  const q = document.getElementById("q").value.toLowerCase();
+  const rows = DATA.filter(s => !q || (s.name + " " + s.class + " " + s.section + " " + s.roll_no).toLowerCase().includes(q));
+  if (!rows.length) { list.textContent = "No students."; return; }
+  list.innerHTML = `<table style="width:100%;border-collapse:collapse">
+    <thead><tr><th align="left">Name</th><th>Class</th><th>Roll</th><th>Parent</th></tr></thead>
+    <tbody>${rows.map(s => `<tr style="border-top:1px solid #eef2f7">
+      <td style="padding:6px 0">${SkoolUI.esc(s.name)}</td>
+      <td align="center">${SkoolUI.esc(s.class)}-${SkoolUI.esc(s.section)}</td>
+      <td align="center">${SkoolUI.esc(s.roll_no)}</td>
+      <td>${SkoolUI.esc(s.parent_phone || "")}</td>
+    </tr>`).join("")}</tbody></table>`;
+}
+document.getElementById("q").oninput = render;
+
+document.getElementById("f").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const obj = {};
+  fd.forEach((v, k) => { if (v) obj[k] = v; });
+  try {
+    await SkoolAPI.api("students.upsert", { student: obj });
+    SkoolUI.toast("Saved", "ok");
+    e.target.reset(); load();
+  } catch (err) { SkoolUI.toast("Failed: " + err.message, "err"); }
+});
+load();
+</script>
+</body>
+</html>

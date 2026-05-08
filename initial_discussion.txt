@@ -1,0 +1,637 @@
+================================================================================================================================
+
+  SCHOOL FACILITY MANAGEMENT SYSTEM  — PHASE 1 (PITCH VERSION)  SCHOOL FACILITY MANAGEMENT SYSTEM - STARTUP IDEA (v1)
+
+  Hero feature: REAL-TIME ATTENDANCE + PARENT TRACKING  Target: Local schools (and later colleges) in your area
+
+  Target     : Small & medium schools in your area  Tech : HTML + CSS + JS  |  Hosting: GitHub Pages
+
+  Tech       : HTML + CSS + JS  |  GitHub Pages         Backend/DB: Google Sheets (via Google Apps Script Web App)
+
+  Backend/DB : Google Apps Script Web App + Google Sheets================================================================
+
+================================================================
+
+
+
+1. ONE-LINE PITCH
+
+0. THE PITCH IN ONE SENTENCE-----------------
+
+----------------------------"A simple, affordable, web-based School Facility Management System
+
+"The moment your child reaches school, you get a notification — that digitizes attendance, marks, fees, ID cards, gate entry and
+
+ and you can see attendance, marks and fees anytime, from your parking — without the school needing any servers or expensive
+
+ phone. No app to install. No expensive software for the school." software. Runs from a browser, data lives in Google Sheets."
+
+
+
+Sell line for the school:
+
+"Replace your paper attendance register with a 30-second tap-screen2. WHY THIS IDEA WORKS FOR LOCAL SCHOOLS
+
+ system. Parents see their child reached school within seconds.----------------------------------------
+
+ You look modern, parents trust you more, admissions go up."- Most small/medium schools still run on paper registers + Excel.
+
+- Big ERPs (like Edusys, Fedena, Classe365) are too costly and
+
+  too complex for them.
+
+1. PHASE 1 — FINAL FEATURE LIST (what you actually build first)- Schools already trust Google (Gmail, Drive, Classroom).
+
+---------------------------------------------------------------- Parents want quick info: "Did my child reach school?",
+
+A. Login & Roles            (Admin, Teacher, Parent, Student)  "What are the marks?", "Is fees paid?".
+
+B. Student & Staff Master   (add/edit/list, photo upload)- Principals want one dashboard, not 10 registers.
+
+C. ⭐ ATTENDANCE MODULE      ← HERO. Detailed in §3-§6.
+
+D. ⭐ PARENT VIEW            ← HERO. Detailed in §7.Your edge:
+
+E. Marks / Exam Entry       (basic marksheet view)  * Cheap (Google Sheets = free DB up to lakhs of rows).
+
+F. Fees Tracking            (paid / pending / receipt print)  * Zero installation. Just a URL.
+
+G. ID Card with QR          (print from browser)  * Easy to customize per school (logo, classes, fee structure).
+
+H. Admin Dashboard          (today's % present, absentees, alerts)  * You can sell it as a yearly subscription per school.
+
+
+
+Everything else (gate QR scanner, parking, library, certificates,
+
+visitors) is **Phase 2** — keep it out of the first pitch so the3. WHO ARE THE USERS (ROLES)
+
+school is not overwhelmed.----------------------------
+
+1. Admin / Principal     - full access, reports, approvals
+
+2. Teacher / Staff       - attendance, marks entry, remarks
+
+2. WHY ATTENDANCE IS THE PERFECT HERO FEATURE3. Student               - view profile, marks, attendance, ID card
+
+---------------------------------------------4. Parent                - view child's info, fees, notices
+
+- Every school does it daily — guaranteed daily usage.5. Security / Gate Staff - scan ID, mark gate-in / gate-out
+
+- Parents emotionally care: "Did my child reach safely?"6. Accountant            - fees collection, receipts
+
+- Teachers feel the pain of paper registers — easy "yes" from them.
+
+- It is the simplest module to demo in 2 minutes.
+
+- Once they trust attendance, upselling marks/fees/gate-QR is easy.4. CORE MODULES (START SIMPLE -> THEN GROW)
+
+-------------------------------------------
+
+
+
+3. ATTENDANCE — HOW IT WORKS (TEACHER SIDE)  PHASE 1 — MVP (sell this first, 1-2 months build)
+
+-------------------------------------------  --------------------------------------------------
+
+Goal: a teacher must finish marking 40 students in under 30 seconds.  A. Student & Staff Master Data
+
+     - Add / edit / view students, teachers, classes, sections.
+
+Flow:     - Stored in Google Sheet "Students", "Staff", "Classes".
+
+  1. Teacher opens the site on phone/tablet/laptop.
+
+  2. Logs in once (token stored 8 hours).  B. Attendance Module
+
+  3. Lands on "My Classes" → taps today's class+section.     - Teacher logs in, picks class, marks Present/Absent.
+
+  4. Sees a clean grid of student photos + names.     - Auto-saved to "Attendance" sheet with date.
+
+     Default state = ALL PRESENT (green).     - Daily/Monthly report for principal.
+
+  5. Teacher taps only the absentees → turns red.
+
+     One more tap = "Late" (yellow).  C. Marks / Exam Module
+
+  6. Taps "Submit Attendance".     - Teacher enters marks per subject per exam.
+
+  7. Confirmation toast: "✅ Saved. 38 Present, 2 Absent."     - Student/parent sees marksheet (read-only).
+
+  8. The moment Submit is pressed:     - Auto-calculates total, %, grade.
+
+        - Row written to "Attendance" sheet.
+
+        - For each PRESENT student → parent gets a notification  D. Fees Module
+
+          (in-app + optional WhatsApp link in Phase 1.5).     - Fee structure per class.
+
+     - Mark "Paid / Pending / Partial".
+
+UX rules (these are what make it feel "high-quality"):     - Generate a printable receipt (HTML -> print to PDF).
+
+  - Mobile-first design. Big tap targets (min 48px).     - Pending fees report for accountant.
+
+  - Works offline: if internet drops mid-class, attendance is
+
+    queued in localStorage and synced when online.  E. ID Card Generation
+
+  - Cannot submit twice for same class+date (server-side check).     - Auto-generate ID card (HTML/CSS template) with:
+
+  - Edit window: teacher can correct within 30 minutes; after         photo, name, class, roll no, school logo,
+
+    that only Admin can edit (with audit log entry).         QR code (encodes student ID).
+
+  - Bulk actions: "Mark all present", "Mark all absent".     - Print directly from browser.
+
+  - Search box for big classes.
+
+  F. Simple Login System
+
+Optional power-ups (still Phase 1, low effort):     - Username + password stored in "Users" sheet.
+
+  - Auto-lock at 10:30 AM — after that, only admin can change.     - Apps Script verifies and returns a token.
+
+  - "Reason" dropdown for absent (Sick / Leave / Unknown).     - Role-based menu (admin / teacher / student / parent).
+
+
+
+
+
+4. ATTENDANCE — DATA MODEL (Google Sheet)  PHASE 2 — FACILITY ADD-ONS (upsell after school adopts MVP)
+
+-----------------------------------------  ------------------------------------------------------------
+
+  G. Gate Entry / Exit (QR Scan)
+
+Sheet: Attendance     - Security guard opens a "Scanner" page on phone/tablet.
+
+  attendance_id | date       | class | section | student_id |     - Uses the phone camera (HTML5 + a JS QR library like
+
+  status        | reason     | marked_by | marked_at |       html5-qrcode) to scan student/staff ID QR.
+
+  edited_by     | edited_at     - Logs entry/exit time in "GateLog" sheet.
+
+     - Can auto-send SMS/WhatsApp to parent: "Child entered school
+
+  status  = P (Present) / A (Absent) / L (Late) / H (Holiday)       at 8:42 AM" (using a free webhook later).
+
+  date    = YYYY-MM-DD (always ISO, never DD/MM)
+
+  marked_at, edited_at = ISO timestamp with timezone  H. Parking System
+
+     - Vehicle pass with QR for staff/parents.
+
+Sheet: AttendanceSummary  (auto-rebuilt nightly by Apps Script)     - Scan at parking gate -> log in/out.
+
+  student_id | month | present_days | absent_days | late_days |     - Slot count display ("12 / 50 slots free").
+
+  percentage
+
+  I. Visitor Management
+
+Why a summary sheet?     - Visitor enters name + phone -> gets a temporary QR pass.
+
+  → Parent dashboard loads in <1 second instead of scanning     - Logged with photo (webcam capture).
+
+    thousands of rows. Critical for "smooth and easy".
+
+  J. Library / Lab / Bus Module (optional later)
+
+Sheet: NotifyLog  (so we never double-send)     - Book issue/return, lab equipment, bus route + stops.
+
+  notify_id | student_id | event | sent_at | channel | status
+
+  K. Notice Board / Announcements
+
+     - Admin posts notice -> visible to all linked users.
+
+5. ATTENDANCE — APPS SCRIPT API (one endpoint pattern)
+
+------------------------------------------------------  L. Badge / Certificate Generation
+
+ONE Web App URL. Every request is a POST with JSON:     - Sports day, achievement, participation certificates.
+
+     - HTML template + student data merge -> print.
+
+  { token: "...", action: "...", payload: {...} }
+
+
+
+Actions for attendance:5. HIGH-LEVEL TECH ARCHITECTURE
+
+  - attendance.getClassRoster    { class, section, date }-------------------------------
+
+  - attendance.submit            { class, section, date, rows[] }
+
+  - attendance.edit              { attendance_id, status, reason }   [ Browser - HTML/CSS/JS ]   <-- GitHub Pages (static hosting)
+
+  - attendance.parentView        { student_id, month }              |
+
+  - attendance.adminDaily        { date }              |  fetch() / POST JSON
+
+              v
+
+Server-side rules inside Apps Script (non-negotiable):   [ Google Apps Script Web App ]  (acts as your API layer)
+
+  1. Verify token → get user → check role.              |
+
+  2. Teacher can only submit for classes assigned to them              v
+
+     (lookup in "ClassTeacher" sheet).   [ Google Sheets ]  (your database)
+
+  3. Reject if (class, section, date) already submitted, unless              |
+
+     action = edit AND user is admin OR within 30 min window.              +-- Students, Staff, Attendance, Marks, Fees,
+
+  4. Always write marked_by and marked_at server-side                  Users, GateLog, Parking, Notices, ...
+
+     (NEVER trust client timestamp).
+
+  5. After successful write, append to NotifyLog and trigger   Extras:
+
+     parent notification function.   - Google Drive  -> store student photos.
+
+   - QR codes      -> generated on the fly using a JS library
+
+                      (e.g. qrcode.js) — no external service.
+
+6. ATTENDANCE — REAL-TIME PARENT NOTIFICATION (Phase 1)   - PDF / Print   -> use browser's window.print() for receipts,
+
+-------------------------------------------------------                      ID cards, certificates.
+
+Two-channel approach, cheapest first:
+
+
+
+  Channel 1 — In-app live update (FREE, ships in v1):6. GOOGLE SHEETS — SAMPLE TABLE DESIGN
+
+    - Parent dashboard polls /parentView every 60 seconds while--------------------------------------
+
+      open. As soon as today's status flips to P, a green banner
+
+      appears: "✅ Aarav reached school at 8:42 AM".  Sheet: Students
+
+    - Browser Notification API: ask permission once; show a    student_id | name | class | section | roll_no | dob |
+
+      desktop/phone notification even when the tab is in the    parent_name | parent_phone | photo_url | address | status
+
+      background.
+
+  Sheet: Staff
+
+  Channel 2 — WhatsApp deep link (FREE, manual fallback):    staff_id | name | role | subject | phone | email | photo_url
+
+    - Apps Script generates a one-line message and a wa.me link
+
+      the school office can click to send. (Phase 1.5: automate  Sheet: Users
+
+      via a paid WhatsApp Business API or a service like Twilio /    user_id | username | password_hash | role | linked_id
+
+      Interakt — only when the school is ready to pay extra.)
+
+  Sheet: Attendance
+
+  SMS option (Phase 2):    date | class | section | student_id | status | marked_by
+
+    - Use a low-cost Indian SMS gateway (Fast2SMS / MSG91) —
+
+      ~15 paise/SMS. Charge the school as an SMS pack add-on.  Sheet: Marks
+
+    exam_id | student_id | subject | marks | max_marks | grade
+
+Important: in v1, promise only the in-app notification + browser
+
+push. Do NOT promise free WhatsApp/SMS — schools will hold you to it.  Sheet: Fees
+
+    student_id | term | amount_due | amount_paid | status |
+
+    paid_on | receipt_no
+
+7. PARENT VIEW — THE SCREEN THAT SELLS THE PRODUCT
+
+--------------------------------------------------  Sheet: GateLog
+
+This is what you demo to the principal. Make it beautiful.    timestamp | id_scanned | type(student/staff/visitor) |
+
+    direction(in/out) | gate_no
+
+Top of screen (today's card):
+
+  ┌───────────────────────────────────────────────┐  Sheet: Parking
+
+  │  Aarav Sharma  •  Class 5-B  •  Roll 12       │    vehicle_no | owner_id | slot | in_time | out_time
+
+  │                                               │
+
+  │   ✅  PRESENT TODAY                            │  Sheet: Notices
+
+  │   Marked at 8:42 AM by Mrs. Priya             │    notice_id | title | body | audience | date | posted_by
+
+  │                                               │
+
+  │  [ View full month ▸ ]                        │
+
+  └───────────────────────────────────────────────┘7. FOLDER STRUCTURE (suggested for your repo)
+
+---------------------------------------------
+
+Below it:
+
+  - Monthly calendar grid: green / red / yellow dots per day.  school_facility_management/
+
+  - "This month: 22/24 days present (91.6%)"    index.html              -> landing / login
+
+  - Last 5 days timeline.    dashboard.html          -> role-based dashboard
+
+  - Quick links: Marks • Fees • Notices • ID Card.    students.html
+
+    attendance.html
+
+Design rules:    marks.html
+
+  - Mobile-first, single column, large fonts.    fees.html
+
+  - Loads in <1 second on 3G (use the AttendanceSummary sheet).    idcard.html
+
+  - Optional passwordless: private link + 6-digit OTP to phone,    scanner.html            -> gate QR scanner
+
+    so parents who hate passwords still use it.    parking.html
+
+    notices.html
+
+    assets/
+
+8. ADMIN DASHBOARD (principal's screen)      css/style.css
+
+---------------------------------------      js/
+
+One screen, glance-able:        api.js              -> all fetch() calls to Apps Script
+
+  - Today: 612 / 640 present  (95.6%)  ▲ 1.2% vs yesterday        auth.js             -> login + role check
+
+  - Class-wise % present (bar list).        qr.js               -> QR generate + scan helpers
+
+  - Absentee list with parent phone (one-tap call/whatsapp).        ui.js
+
+  - "Not yet marked" list — classes where the teacher hasn't      img/logo.png
+
+    submitted by 9:30 AM (huge value for the principal).    apps-script/
+
+  - Export to Excel / PDF (one click).      Code.gs               -> doGet, doPost, CRUD per sheet
+
+      README.md             -> deploy steps
+
+
+
+9. SECURITY — TIGHT, AS REQUESTED
+
+---------------------------------8. SECURITY / PRIVACY (be honest with schools)
+
+This is what convinces the school you are a serious developer.----------------------------------------------
+
+- Passwords stored as SHA-256 hash, never plain text.
+
+9.1 Authentication- Apps Script Web App deployed as "Execute as me, access:
+
+  - Passwords hashed with SHA-256 + per-user salt (done in  anyone with link" — but every request must carry a token.
+
+    Apps Script using Utilities.computeDigest). Never store plain.- Each school gets its own Google Sheet + its own deployment
+
+  - On login, server returns a signed token:  (data isolation).
+
+        token = base64( user_id | role | expiry | HMAC )- Daily auto-backup: a script copies the sheet to Drive folder.
+
+    HMAC uses a secret stored in Apps Script PropertiesService- No data is shared with third parties. Mention this clearly
+
+    (not in code, not in sheet).  in the proposal — schools care about student data.
+
+  - Token expiry: 8 hours. Auto-logout on expiry.
+
+  - Failed login: 5 attempts → account locked 15 minutes.
+
+  - Optional 2FA for Admin: 6-digit OTP on email.9. PRICING IDEA (for the proposal)
+
+----------------------------------
+
+9.2 Authorization (role checks on EVERY request)  Starter   : ₹3,000 / year   - up to 200 students, MVP modules
+
+  - Teacher → only their assigned classes.  Standard  : ₹7,500 / year   - up to 800 students, + gate QR,
+
+  - Parent  → only their linked child(ren).                                 parking, notices, SMS to parents
+
+  - Student → only their own data, read-only.  Premium   : ₹15,000 / year  - unlimited, custom branding,
+
+  - Admin   → everything, but every write is audit-logged.                                 onsite training, priority support
+
+
+
+9.3 Transport  One-time setup fee: ₹2,000 (data import + training).
+
+  - GitHub Pages → HTTPS by default. ✅
+
+  - Apps Script Web App → HTTPS only. ✅
+
+  - No third-party CDNs for sensitive logic; bundle locally.10. GO-TO-MARKET (how to actually sell to local schools)
+
+  - Strict CSP meta tag on every page.--------------------------------------------------------
+
+1. Build a polished demo with a fake school ("Demo Public School").
+
+9.4 Data isolation2. Make a 2-page printed brochure + 1 short demo video (2 min).
+
+  - One Google Sheet PER SCHOOL. One Apps Script deployment per3. Visit 10 schools in your area, ask for the principal/correspondent.
+
+    school. A bug in one school cannot leak another school's data.   Show the live demo on a laptop or tablet.
+
+  - Photos in a Drive folder restricted to the school's domain.4. Offer FREE 3-month pilot to the first 2-3 schools in exchange
+
+   for a testimonial.
+
+9.5 Audit log (mandatory)5. Use those testimonials + photos to approach the next 20 schools.
+
+  Sheet: AuditLog6. Parents' WhatsApp groups are gold — once parents like it, other
+
+    timestamp | user_id | role | action | target | ip | user_agent   schools will hear about it.
+
+  Every login, every edit, every export is logged.
+
+  Admin can view; nobody can delete (sheet protected).
+
+11. WHAT TO PROPOSE FIRST TO A SCHOOL (the pitch document)
+
+9.6 Input validation (server side)----------------------------------------------------------
+
+  - student_id must exist in Students sheet.Keep your first proposal to ONE PAGE:
+
+  - date must be today, unless admin override.
+
+  - status must be one of P / A / L / H.  Problem  : Paper registers, scattered Excel files, slow fee
+
+  - Reject anything else with a JSON 400 error.             tracking, no parent visibility.
+
+  - Escape all output rendered into HTML to prevent XSS.  Solution : One web dashboard for the whole school.
+
+  Modules  : Attendance, Marks, Fees, ID Cards, Gate QR.
+
+9.7 Rate limiting (lightweight)  Cost     : ₹X / year (very low vs. competitors).
+
+  - Apps Script CacheService: max 60 requests / minute / token.  Timeline : Live in 2 weeks after data is shared.
+
+  - Blocks brute force and accidental loops.  Support  : WhatsApp + on-call training.
+
+
+
+9.8 PrivacyAttach 4-5 screenshots of the demo. That's it.
+
+  - Student photos and parent phone numbers are NEVER returned to
+
+    other parents/students — only to admin and the linked parent.
+
+  - Daily auto-backup of the sheet to a Drive backup folder.12. ROADMAP / NEXT STEPS FOR YOU
+
+  - "Export all my data" + "Delete my data" available to admin--------------------------------
+
+    on request — keeps you compliant with India's DPDP Act 2023.[ ] Finalize MVP modules (Phase 1: A-F above).
+
+[ ] Design the Google Sheet schema (section 6).
+
+9.9 What you tell the principal in plain English[ ] Build Apps Script API (doGet/doPost with action param).
+
+  "Your data lives in your own Google account. Nobody — not even[ ] Build login + dashboard shell in HTML/CSS/JS.
+
+   me — can read student data without your permission. Every[ ] Build modules one by one: Students -> Attendance -> Marks
+
+   change is logged with the user's name and time. Passwords are    -> Fees -> ID Card.
+
+   encrypted. The website only works over HTTPS."[ ] Add QR generator on ID card page.
+
+[ ] Build the Scanner page (Phase 2 starter).
+
+[ ] Prepare a demo school's data and record a 2-min video.
+
+10. PERFORMANCE — "SMOOTH AND EASY"[ ] Print brochure, list 10 schools nearby, start visits.
+
+-----------------------------------
+
+- Use AttendanceSummary sheet for parent view (O(1) lookup).
+
+- Cache class roster in localStorage for the day.================================================================
+
+- Lazy-load student photos (loading="lazy", small thumbs ~80×80  NOTES / OPEN QUESTIONS (fill in as you decide)
+
+  stored in Drive).================================================================
+
+- Skeleton loaders, never blank screens.- Brand / product name? (e.g. "SkoolDesk", "Vidya360", "EduTrack")
+
+- Optimistic UI: when teacher taps "Submit", show success- Which school will you target first for the free pilot?
+
+  immediately, sync in background, rollback only on failure.- Will you handle SMS/WhatsApp to parents in v1 or skip it?
+
+- Test on a cheap Android phone on 3G — that's your real user.- Single sheet per school OR one master sheet for all schools?
+
+  (Recommended: one sheet per school for safety + easy export.)
+
+- Do you want a parent mobile-friendly view in v1? (yes — most
+
+11. WORKS FOR THE SMALLEST SCHOOL TOO  parents will open it on phone, so design mobile-first.)
+
+-------------------------------------
+
+- Single teacher / 50 students? Same product, just less data.================================================================
+
+- No tablet? Works on the teacher's own Android phone.
+- No internet in classroom? Offline mode (localStorage queue).
+- No tech person at school? Setup in 1 day:
+    1. You create the Google Sheet from a template.
+    2. You import their student list from Excel/paper.
+    3. You create logins and hand over a 1-page printed guide.
+- Pricing: a "Mini" tier — ₹1,500/year for up to 100 students —
+  so even tiny schools can say yes.
+
+
+12. FOLDER STRUCTURE FOR YOUR REPO
+----------------------------------
+school_facility_management/
+  index.html              login
+  dashboard.html          role-based redirect
+  teacher/
+    classes.html
+    attendance.html       ← hero screen
+  parent/
+    home.html             ← hero screen
+    month.html
+  admin/
+    dashboard.html
+    students.html
+    staff.html
+    reports.html
+  shared/
+    marks.html
+    fees.html
+    idcard.html
+  assets/
+    css/style.css
+    js/
+      api.js              fetch wrapper + token handling
+      auth.js             login, logout, role guard
+      attendance.js       teacher grid logic + offline queue
+      parent.js           polling + browser notifications
+      ui.js               toasts, skeletons, modals
+      crypto.js           sha256 helper for client-side hash
+    img/
+  apps-script/
+    Code.gs               doPost router
+    auth.gs               login, token, hash, rate-limit
+    attendance.gs         submit / edit / parentView / adminDaily
+    students.gs
+    marks.gs
+    fees.gs
+    audit.gs
+    notify.gs
+    config.gs             constants, sheet names
+  docs/
+    PROPOSAL_1page.pdf    what you hand the principal
+    SECURITY.md           the page above (§9), printable
+
+
+13. TWO-WEEK BUILD PLAN (realistic)
+-----------------------------------
+Day 1-2  : Google Sheet schema + Apps Script skeleton (auth,
+           token, audit, rate-limit).
+Day 3-4  : Login screen + role-based dashboard shell.
+Day 5-7  : Teacher attendance grid (this is the hero — polish it).
+Day 8-9  : Parent view + browser notifications + summary rebuild.
+Day 10   : Admin daily dashboard + "not-yet-marked" alerts.
+Day 11   : Students/Staff master CRUD + photo upload to Drive.
+Day 12   : Marks + Fees (basic) + ID card print.
+Day 13   : Security pass — audit log, rate limit, input validation,
+           backup script, penetration self-test.
+Day 14   : Demo school data, 2-min screen-recorded demo, brochure.
+
+
+14. THE PITCH SCRIPT (use this in front of the principal)
+---------------------------------------------------------
+1. "How do you take attendance today?" → listen.
+2. "How do parents know their child reached school?" → listen.
+3. Open laptop. Show the teacher screen. Mark 30 students in
+   20 seconds. Hit Submit.
+4. Switch tabs to the parent view on a phone — it already shows
+   "✅ Reached school at 8:42 AM".
+5. Show the principal dashboard — "you'll see this every morning,
+   and you'll know which class hasn't marked attendance yet".
+6. Show §9 SECURITY page — read 3 bullet points aloud.
+7. Price: ₹1,500 / ₹3,000 / ₹7,500 a year depending on size.
+   First 3 months free as a pilot.
+8. Ask: "Can I start with your 5th standard next Monday?"
+
+================================================================
+  OPEN DECISIONS (tell me and I'll start coding)
+================================================================
+[ ] Product name? (suggestions: SkoolMark, Vidya360, ReachedSafe)
+[ ] First school you'll pitch to?
+[ ] In v1, do you want browser push notifications only, or also
+    a wa.me one-click WhatsApp message for the office?
+[ ] Should I scaffold the Apps Script + Google Sheet template
+    next, or the teacher attendance HTML screen first?
+================================================================

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dashboard · SkoolMark</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+const u = SkoolAuth.require();
+if (u) {
+  const map = {
+    admin:   "admin/dashboard.html",
+    teacher: "teacher/classes.html",
+    parent:  "parent/home.html",
+    student: "parent/home.html"
+  };
+  location.replace(map[u.role] || "index.html");
+}
+</script>
+<div class="app"><div class="card">Redirecting…</div></div>
+</body>
+</html>

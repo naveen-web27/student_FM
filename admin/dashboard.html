@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Admin · SkoolMark</title>
+<link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/auth.js"></script>
+<script src="../assets/js/ui.js"></script>
+
+<div class="app">
+  <div class="card">
+    <h2>Today at a glance</h2>
+    <div class="muted" id="todayStr"></div>
+    <div style="height:10px"></div>
+    <div class="kpis">
+      <div class="kpi"><div class="v" id="kTotal">—</div><div class="l">Students</div></div>
+      <div class="kpi"><div class="v" id="kPresent">—</div><div class="l">Present</div></div>
+      <div class="kpi"><div class="v" id="kAbsent">—</div><div class="l">Absent</div></div>
+      <div class="kpi"><div class="v" id="kPct">—</div><div class="l">% Present</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Class-wise present</h2>
+    <div id="byClass"></div>
+  </div>
+
+  <div class="card">
+    <h2>⚠️ Not yet marked (after 9:30 AM)</h2>
+    <div id="notMarked" class="muted">—</div>
+  </div>
+
+  <div class="card">
+    <h2>Manage</h2>
+    <div class="row">
+      <a href="students.html"><button class="secondary">Students</button></a>
+      <a href="staff.html"><button class="secondary">Staff</button></a>
+      <a href="../shared/marks.html"><button class="secondary">Marks</button></a>
+      <a href="../shared/fees.html"><button class="secondary">Fees</button></a>
+    </div>
+  </div>
+</div>
+
+<script>
+SkoolAuth.require(["admin"]);
+SkoolUI.topbar("Admin");
+document.getElementById("todayStr").textContent = new Date().toDateString();
+
+async function load() {
+  try {
+    const d = await SkoolAPI.api("attendance.adminDaily", {});
+    document.getElementById("kTotal").textContent   = d.totalStudents;
+    document.getElementById("kPresent").textContent = d.present;
+    document.getElementById("kAbsent").textContent  = d.absent;
+    document.getElementById("kPct").textContent     = d.percentage + "%";
+    const bc = document.getElementById("byClass");
+    bc.innerHTML = "";
+    d.byClass.sort((a, b) => String(a.class).localeCompare(String(b.class)) || String(a.section).localeCompare(String(b.section)))
+      .forEach(c => {
+        const pct = c.T ? Math.round(c.P / c.T * 100) : 0;
+        const row = document.createElement("div");
+        row.style.cssText = "padding:8px 0;border-bottom:1px solid #eef2f7";
+        row.innerHTML = `<div style="display:flex;justify-content:space-between">
+          <strong>Class ${SkoolUI.esc(c.class)}-${SkoolUI.esc(c.section)}</strong>
+          <span>${c.P}/${c.T} (${pct}%)</span></div>
+          <div style="background:#e5e7eb;border-radius:6px;overflow:hidden;height:8px;margin-top:6px">
+            <div style="height:100%;width:${pct}%;background:${pct >= 90 ? "#16a34a" : pct >= 75 ? "#d97706" : "#dc2626"}"></div>
+          </div>`;
+        bc.appendChild(row);
+      });
+
+    const nm = await SkoolAPI.api("attendance.notMarked", {});
+    const div = document.getElementById("notMarked");
+    if (!nm.pending.length) {
+      div.innerHTML = '<span class="badge green">All classes marked ✓</span>';
+    } else {
+      div.innerHTML = nm.pending.map(p =>
+        `<span class="badge red" style="margin:3px">Class ${SkoolUI.esc(p.class)}-${SkoolUI.esc(p.section)}</span>`
+      ).join("");
+    }
+  } catch (e) {
+    SkoolUI.toast("Failed: " + e.message, "err");
+  }
+}
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>

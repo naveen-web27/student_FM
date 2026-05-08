@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Month · SkoolMark</title>
+<link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/auth.js"></script>
+<script src="../assets/js/ui.js"></script>
+
+<div class="app narrow">
+  <div class="card">
+    <div class="row">
+      <select id="child"></select>
+      <input type="month" id="month" />
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Attendance</h2>
+    <div class="kpis">
+      <div class="kpi"><div class="v" id="kPresent">—</div><div class="l">Present</div></div>
+      <div class="kpi"><div class="v" id="kAbsent">—</div><div class="l">Absent</div></div>
+      <div class="kpi"><div class="v" id="kLate">—</div><div class="l">Late</div></div>
+      <div class="kpi"><div class="v" id="kPct">—</div><div class="l">Percentage</div></div>
+    </div>
+    <table style="width:100%;margin-top:12px;border-collapse:collapse" id="tbl">
+      <thead><tr><th align="left">Date</th><th align="left">Status</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <a href="home.html">← Back</a>
+</div>
+
+<script>
+const me = SkoolAuth.require(["parent", "student", "admin"]);
+SkoolUI.topbar("Month");
+
+const childSel = document.getElementById("child");
+const monthInp = document.getElementById("month");
+monthInp.value = new Date().toISOString().slice(0, 7);
+
+async function init() {
+  let kids = [];
+  if (me.role === "parent") {
+    kids = (await SkoolAPI.api("students.byParent", {})).students;
+  } else if (me.role === "student") {
+    kids = [{ student_id: me.linked_id, name: me.name }];
+  } else {
+    kids = ((await SkoolAPI.api("students.list", {})).students || []).slice(0, 5);
+  }
+  kids.forEach(k => childSel.appendChild(new Option(k.name, k.student_id)));
+  childSel.onchange = load; monthInp.onchange = load;
+  if (kids.length) load();
+}
+
+const STATUS_LABEL = { P: "Present", A: "Absent", L: "Late", H: "Holiday" };
+
+async function load() {
+  const sid = childSel.value, month = monthInp.value;
+  if (!sid) return;
+  try {
+    const d = await SkoolAPI.api("attendance.parentView", { student_id: sid, month });
+    document.getElementById("kPresent").textContent = d.summary.present_days;
+    document.getElementById("kAbsent").textContent  = d.summary.absent_days;
+    document.getElementById("kLate").textContent    = d.summary.late_days;
+    document.getElementById("kPct").textContent     = d.summary.percentage + "%";
+    const tb = document.querySelector("#tbl tbody");
+    tb.innerHTML = "";
+    d.days.sort((a, b) => String(a.date).localeCompare(String(b.date)))
+      .forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td style="padding:6px 0;border-bottom:1px solid #eef2f7">${SkoolUI.esc(r.date)}</td>
+                        <td><span class="badge ${r.status === "P" ? "green" : r.status === "A" ? "red" : "yellow"}">${STATUS_LABEL[r.status] || r.status}</span></td>`;
+        tb.appendChild(tr);
+      });
+  } catch (e) { SkoolUI.toast("Failed: " + e.message, "err"); }
+}
+
+init();
+</script>
+</body>
+</html>

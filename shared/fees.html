@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Fees · SkoolMark</title>
+<link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/auth.js"></script>
+<script src="../assets/js/ui.js"></script>
+
+<div class="app">
+  <div class="card"><div class="row"><select id="child"></select></div></div>
+
+  <div class="card" id="entry" style="display:none">
+    <h2>Record fee</h2>
+    <form id="f" class="row">
+      <input name="term" placeholder="Term (e.g. T1)" required />
+      <input name="amount_due" placeholder="Due" type="number" required />
+      <input name="amount_paid" placeholder="Paid" type="number" />
+      <select name="status">
+        <option value="pending">Pending</option>
+        <option value="partial">Partial</option>
+        <option value="paid">Paid</option>
+      </select>
+      <input name="paid_on" placeholder="Paid on YYYY-MM-DD" />
+      <button type="submit">Save</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <h2 style="flex:1">Fees</h2>
+      <button class="secondary no-print" onclick="window.print()">Print receipt</button>
+    </div>
+    <div id="list" class="muted">—</div>
+  </div>
+</div>
+
+<script>
+const me = SkoolAuth.require(["admin","parent","student","teacher"]);
+SkoolUI.topbar("Fees");
+
+const childSel = document.getElementById("child");
+async function init() {
+  let kids = [];
+  if (me.role === "parent") kids = (await SkoolAPI.api("students.byParent", {})).students;
+  else if (me.role === "student") kids = [{ student_id: me.linked_id, name: me.name }];
+  else kids = ((await SkoolAPI.api("students.list", {})).students || []).slice(0, 50);
+  kids.forEach(k => childSel.appendChild(new Option(k.name, k.student_id)));
+  childSel.onchange = load;
+  if (me.role === "admin") document.getElementById("entry").style.display = "";
+  if (kids.length) load();
+}
+async function load() {
+  const sid = childSel.value;
+  try {
+    const d = await SkoolAPI.api("fees.byStudent", { student_id: sid });
+    const list = document.getElementById("list");
+    if (!d.fees.length) { list.textContent = "No fee records yet."; return; }
+    list.innerHTML = `<table style="width:100%;border-collapse:collapse">
+      <thead><tr><th align="left">Term</th><th>Due</th><th>Paid</th><th>Status</th><th>Paid on</th><th>Receipt</th></tr></thead>
+      <tbody>${d.fees.map(f => `<tr style="border-top:1px solid #eef2f7">
+        <td style="padding:6px 0">${SkoolUI.esc(f.term)}</td>
+        <td align="center">₹${SkoolUI.esc(f.amount_due)}</td>
+        <td align="center">₹${SkoolUI.esc(f.amount_paid||0)}</td>
+        <td align="center"><span class="badge ${f.status==='paid'?'green':f.status==='partial'?'yellow':'red'}">${SkoolUI.esc(f.status)}</span></td>
+        <td align="center">${SkoolUI.esc(f.paid_on||"")}</td>
+        <td align="center">${SkoolUI.esc(f.receipt_no||"")}</td>
+      </tr>`).join("")}</tbody></table>`;
+  } catch (e) { document.getElementById("list").textContent = "Failed: " + e.message; }
+}
+document.getElementById("f").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target); const f = { student_id: childSel.value };
+  fd.forEach((v, k) => { if (v) f[k] = v; });
+  try { await SkoolAPI.api("fees.upsert", { fee: f }); SkoolUI.toast("Saved","ok"); e.target.reset(); load(); }
+  catch (err) { SkoolUI.toast("Failed: " + err.message, "err"); }
+});
+init();
+</script>
+</body>
+</html>

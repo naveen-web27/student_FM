@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ID Card · SkoolMark</title>
+<link rel="stylesheet" href="../assets/css/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<style>
+  .idcard{width:340px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;
+          box-shadow:var(--shadow);margin:14px auto}
+  .idcard .head{background:var(--brand);color:#fff;border-radius:10px;padding:10px;text-align:center;font-weight:800}
+  .idcard .body{display:flex;gap:12px;align-items:center;margin-top:10px}
+  .idcard img.photo{width:90px;height:90px;border-radius:8px;object-fit:cover;background:#eef2f7}
+  .idcard .info b{display:block;font-size:16px}
+  .idcard .info span{display:block;font-size:13px;color:var(--muted)}
+  .idcard canvas{display:block;margin:10px auto 0}
+  .idcard .foot{font-size:11px;text-align:center;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/auth.js"></script>
+<script src="../assets/js/ui.js"></script>
+
+<div class="app narrow">
+  <div class="card no-print">
+    <div class="row">
+      <select id="child"></select>
+      <button onclick="window.print()">🖨 Print</button>
+    </div>
+  </div>
+  <div id="cards"></div>
+</div>
+
+<script>
+const me = SkoolAuth.require(["admin","teacher","parent","student"]);
+SkoolUI.topbar("ID Card");
+
+async function init() {
+  let kids = [];
+  if (me.role === "parent") kids = (await SkoolAPI.api("students.byParent", {})).students;
+  else if (me.role === "student") kids = [{ student_id: me.linked_id, name: me.name }];
+  else kids = ((await SkoolAPI.api("students.list", {})).students || []);
+  const sel = document.getElementById("child");
+  kids.forEach(k => sel.appendChild(new Option(k.name + (k.class ? " · " + k.class + "-" + k.section : ""), k.student_id)));
+  sel.onchange = () => render(kids.find(x => x.student_id === sel.value));
+  if (kids.length) render(kids[0]);
+}
+
+function render(s) {
+  if (!s) return;
+  const wrap = document.getElementById("cards");
+  wrap.innerHTML = `
+    <div class="idcard">
+      <div class="head">📘 ${SkoolUI.esc(window.SKOOL_CONFIG.SCHOOL_NAME)}</div>
+      <div class="body">
+        <img class="photo" src="${s.photo_url || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 90'><rect width='90' height='90' fill='%23eef2f7'/><text x='45' y='55' text-anchor='middle' font-size='32' fill='%2394a3b8'>" + (s.name || "?")[0] + "</text></svg>"}" />
+        <div class="info">
+          <b>${SkoolUI.esc(s.name)}</b>
+          <span>ID: ${SkoolUI.esc(s.student_id)}</span>
+          <span>Class ${SkoolUI.esc(s.class||"")}-${SkoolUI.esc(s.section||"")} · Roll ${SkoolUI.esc(s.roll_no||"")}</span>
+          <span>DOB: ${SkoolUI.esc(s.dob||"—")}</span>
+        </div>
+      </div>
+      <canvas id="qr"></canvas>
+      <div class="foot">If found, please return to the school office.</div>
+    </div>`;
+  QRCode.toCanvas(document.getElementById("qr"),
+    JSON.stringify({ id: s.student_id, name: s.name, school: window.SKOOL_CONFIG.SCHOOL_NAME }),
+    { width: 140, margin: 1 });
+}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>My Child · SkoolMark</title>
+<link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/auth.js"></script>
+<script src="../assets/js/ui.js"></script>
+
+<div class="app narrow">
+  <div id="hero" class="hero unknown">
+    <div class="label">Today's Status</div>
+    <div class="big" id="bigStatus">Loading…</div>
+    <div class="sub" id="subStatus">&nbsp;</div>
+  </div>
+  <div style="height:14px"></div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div>
+        <h2 id="childName">—</h2>
+        <div class="muted" id="childMeta"></div>
+      </div>
+      <div style="text-align:right">
+        <select id="childPicker" style="display:none"></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>This Month</h2>
+    <div class="kpis">
+      <div class="kpi"><div class="v" id="kPresent">—</div><div class="l">Present</div></div>
+      <div class="kpi"><div class="v" id="kAbsent">—</div><div class="l">Absent</div></div>
+      <div class="kpi"><div class="v" id="kPct">—</div><div class="l">Percentage</div></div>
+    </div>
+    <div id="cal" class="cal" style="margin-top:14px"></div>
+  </div>
+
+  <div class="card">
+    <h2>Quick links</h2>
+    <div class="row">
+      <a class="badge green" href="../shared/marks.html">Marks</a>
+      <a class="badge yellow" href="../shared/fees.html">Fees</a>
+      <a class="badge" href="../shared/idcard.html">ID Card</a>
+      <a class="badge red" href="month.html">Full month →</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const me = SkoolAuth.require(["parent", "student", "admin"]);
+SkoolUI.topbar("Home");
+
+const STATE = { children: [], current: null, lastStatus: null };
+
+async function loadChildren() {
+  if (me.role === "parent") {
+    const d = await SkoolAPI.api("students.byParent", {});
+    STATE.children = d.students || [];
+  } else if (me.role === "student") {
+    STATE.children = [{ student_id: me.linked_id, name: me.name, class: "", section: "" }];
+  } else {
+    // admin: pick first student for preview
+    const d = await SkoolAPI.api("students.list", {});
+    STATE.children = (d.students || []).slice(0, 1);
+  }
+  if (STATE.children.length > 1) {
+    const sel = document.getElementById("childPicker");
+    sel.style.display = "";
+    STATE.children.forEach(c => sel.appendChild(new Option(c.name, c.student_id)));
+    sel.onchange = () => { STATE.current = STATE.children.find(c => c.student_id === sel.value); refresh(); };
+  }
+  STATE.current = STATE.children[0] || null;
+}
+
+function setHero(status, markedAt) {
+  const hero = document.getElementById("hero");
+  const big = document.getElementById("bigStatus");
+  const sub = document.getElementById("subStatus");
+  hero.classList.remove("absent", "unknown");
+  if (status === "P" || status === "L") {
+    big.textContent = status === "P" ? "✅ Present today" : "🟡 Reached late";
+    sub.textContent = markedAt ? "Marked at " + SkoolUI.fmtTime(markedAt) : "";
+  } else if (status === "A") {
+    hero.classList.add("absent");
+    big.textContent = "❌ Marked absent";
+    sub.textContent = markedAt ? "Recorded at " + SkoolUI.fmtTime(markedAt) : "";
+  } else {
+    hero.classList.add("unknown");
+    big.textContent = "⏳ Not yet marked";
+    sub.textContent = "Teacher hasn't marked attendance yet.";
+  }
+}
+
+function renderCalendar(days) {
+  const today = new Date();
+  const year = today.getFullYear(), month = today.getMonth();
+  const first = new Date(year, month, 1).getDay();
+  const last  = new Date(year, month + 1, 0).getDate();
+  const map = {};
+  days.forEach(d => map[String(d.date).slice(8, 10)] = d.status);
+  const cal = document.getElementById("cal");
+  cal.innerHTML = "";
+  ["S","M","T","W","T","F","S"].forEach(h => cal.appendChild(SkoolUI.el("div", { class: "d muted" }, [h])));
+  for (let i = 0; i < first; i++) cal.appendChild(SkoolUI.el("div", { class: "d h" }, [""]));
+  for (let d = 1; d <= last; d++) {
+    const key = String(d).padStart(2, "0");
+    const st = map[key] || "";
+    cal.appendChild(SkoolUI.el("div", { class: "d " + st }, [String(d)]));
+  }
+}
+
+async function refresh() {
+  const c = STATE.current;
+  if (!c) return;
+  document.getElementById("childName").textContent = c.name || "—";
+  document.getElementById("childMeta").textContent =
+    [c.class && "Class " + c.class, c.section && "Sec " + c.section, c.roll_no && "Roll " + c.roll_no].filter(Boolean).join(" · ");
+  try {
+    const month = new Date().toISOString().slice(0, 7);
+    const d = await SkoolAPI.api("attendance.parentView", { student_id: c.student_id, month });
+    setHero(d.today ? d.today.status : null, d.today ? d.today.marked_at : null);
+
+    // browser notification when status flips to P/L
+    const newKey = d.today ? d.today.status : "";
+    if (STATE.lastStatus !== null && STATE.lastStatus !== newKey && (newKey === "P" || newKey === "L")) {
+      try {
+        if (Notification.permission === "granted") {
+          new Notification("✅ " + (c.name || "Your child") + " reached school",
+            { body: "Marked at " + SkoolUI.fmtTime(d.today.marked_at) });
+        }
+      } catch {}
+    }
+    STATE.lastStatus = newKey;
+
+    document.getElementById("kPresent").textContent = d.summary.present_days;
+    document.getElementById("kAbsent").textContent  = d.summary.absent_days;
+    document.getElementById("kPct").textContent     = d.summary.percentage + "%";
+    renderCalendar(d.days || []);
+  } catch (e) {
+    SkoolUI.toast("Failed: " + e.message, "err");
+  }
+}
+
+(async function () {
+  await loadChildren();
+  await refresh();
+  // ask once for browser notifications
+  try { if (Notification && Notification.permission === "default") Notification.requestPermission(); } catch {}
+  // poll
+  setInterval(refresh, window.SKOOL_CONFIG.POLL_MS || 60000);
+})();
+</script>
+</body>
+</html>

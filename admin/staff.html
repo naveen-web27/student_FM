@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Staff · SkoolMark</title>
+<link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/auth.js"></script>
+<script src="../assets/js/ui.js"></script>
+
+<div class="app">
+  <div class="card">
+    <h2>Add Staff</h2>
+    <form id="f">
+      <div class="row">
+        <input name="staff_id" placeholder="ID (leave blank)" />
+        <input name="name" placeholder="Name" required />
+        <input name="role" placeholder="Role (teacher / accountant)" />
+      </div>
+      <div style="height:8px"></div>
+      <div class="row">
+        <input name="subject" placeholder="Subject" />
+        <input name="phone" placeholder="Phone" />
+        <input name="email" placeholder="Email" />
+      </div>
+      <div style="height:10px"></div>
+      <button type="submit">Save</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Staff list</h2>
+    <div id="list" class="muted">Loading…</div>
+  </div>
+</div>
+
+<script>
+SkoolAuth.require(["admin"]);
+SkoolUI.topbar("Staff");
+
+async function load() {
+  try {
+    const d = await SkoolAPI.api("staff.list", {});
+    const list = document.getElementById("list");
+    if (!d.staff.length) { list.textContent = "No staff yet."; return; }
+    list.innerHTML = `<table style="width:100%;border-collapse:collapse">
+      <thead><tr><th align="left">Name</th><th>Role</th><th>Subject</th><th>Phone</th></tr></thead>
+      <tbody>${d.staff.map(s => `<tr style="border-top:1px solid #eef2f7">
+        <td style="padding:6px 0">${SkoolUI.esc(s.name)}</td>
+        <td>${SkoolUI.esc(s.role || "")}</td>
+        <td>${SkoolUI.esc(s.subject || "")}</td>
+        <td>${SkoolUI.esc(s.phone || "")}</td>
+      </tr>`).join("")}</tbody></table>`;
+  } catch (e) { document.getElementById("list").textContent = "Failed: " + e.message; }
+}
+
+document.getElementById("f").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target); const obj = {};
+  fd.forEach((v, k) => { if (v) obj[k] = v; });
+  try { await SkoolAPI.api("staff.upsert", { staff: obj }); SkoolUI.toast("Saved", "ok"); e.target.reset(); load(); }
+  catch (err) { SkoolUI.toast("Failed: " + err.message, "err"); }
+});
+load();
+</script>
+</body>
+</html>
