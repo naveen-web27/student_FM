@@ -18,8 +18,8 @@
   }
 
   async function api(action, payload) {
-    const url = window.SKOOL_CONFIG.API_URL;
-    if (!url || url.includes("REPLACE_WITH")) {
+    const url = (window.SKOOL_CONFIG && window.SKOOL_CONFIG.API_URL || "").trim();
+    if (!url || url.includes("REPLACE_WITH") || !/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) {
       throw new Error("API_URL not configured in assets/js/config.js");
     }
     const body = JSON.stringify({ token: getToken(), action, payload: payload || {} });
