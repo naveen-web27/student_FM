@@ -14,10 +14,10 @@
 
 <div class="app">
   <div class="card">
-    <h2>Add / Update Student</h2>
-    <form id="f">
+    <h2 id="formTitle">Add Student</h2>
+    <form id="f" autocomplete="off">
+      <input type="hidden" name="student_id" />
       <div class="row">
-        <input name="student_id" placeholder="ID (leave blank for new)" />
         <input name="name" placeholder="Full name" required />
         <input name="roll_no" placeholder="Roll no" required />
       </div>
@@ -29,27 +29,31 @@
       </div>
       <div style="height:8px"></div>
       <div class="row">
-        <input name="parent_user_id" placeholder="Existing parent user_id (optional)" />
         <input name="parent_name" placeholder="Parent name" />
         <input name="parent_phone" placeholder="Parent phone" />
       </div>
       <div style="height:8px"></div>
-      <div class="muted" style="font-size:13px">Or create a parent login here (recommended)</div>
+      <div class="muted" style="font-size:13px">Parent login (optional — leave blank when editing if already created)</div>
       <div style="height:6px"></div>
       <div class="row">
         <input name="parent_username" placeholder="Parent login username" autocomplete="off" />
         <input name="parent_password" type="text" placeholder="Initial password" autocomplete="new-password" />
       </div>
       <div style="height:8px"></div>
+      <input name="parent_user_id" placeholder="Existing parent user_id (optional)" />
+      <div style="height:8px"></div>
       <input name="photo_url" placeholder="Photo URL (Drive / public)" />
-      <div style="height:10px"></div>
-      <button type="submit">Save</button>
+      <div style="height:12px"></div>
+      <div class="row">
+        <button type="submit" id="saveBtn">Save</button>
+        <button type="button" id="cancelBtn" class="secondary" style="display:none">Cancel edit</button>
+      </div>
     </form>
   </div>
 
   <div class="card">
     <div class="row" style="align-items:center">
-      <h2 style="flex:1">Students</h2>
+      <h2 style="flex:1;min-width:0">Students</h2>
       <input id="q" placeholder="Search…" style="max-width:240px" />
     </div>
     <div id="list" class="muted">Loading…</div>
@@ -60,46 +64,117 @@
 SkoolAuth.require(["admin"]);
 SkoolUI.topbar("Students");
 
-const list = document.getElementById("list");
-let DATA = [];
+var list = document.getElementById("list");
+var form = document.getElementById("f");
+var saveBtn = document.getElementById("saveBtn");
+var cancelBtn = document.getElementById("cancelBtn");
+var formTitle = document.getElementById("formTitle");
+var DATA = [];
+var inFlight = false;
 
 async function load() {
   try {
-    const d = await SkoolAPI.api("students.list", {});
+    var d = await SkoolAPI.api("students.list", {});
     DATA = d.students || [];
     render();
   } catch (e) { list.textContent = "Failed: " + e.message; }
 }
+
 function render() {
-  const q = document.getElementById("q").value.toLowerCase();
-  const rows = DATA.filter(s => !q || (s.name + " " + s.class + " " + s.section + " " + s.roll_no).toLowerCase().includes(q));
+  var q = document.getElementById("q").value.toLowerCase();
+  var rows = DATA.filter(function (s) {
+    return !q || (s.name + " " + s.class + " " + s.section + " " + s.roll_no).toLowerCase().indexOf(q) >= 0;
+  });
   if (!rows.length) { list.textContent = "No students."; return; }
-  list.innerHTML = `<table style="width:100%;border-collapse:collapse">
-    <thead><tr><th align="left">Name</th><th>Class</th><th>Roll</th><th>Parent</th></tr></thead>
-    <tbody>${rows.map(s => `<tr style="border-top:1px solid #eef2f7">
-      <td style="padding:6px 0">${SkoolUI.esc(s.name)}</td>
-      <td align="center">${SkoolUI.esc(s.class)}-${SkoolUI.esc(s.section)}</td>
-      <td align="center">${SkoolUI.esc(s.roll_no)}</td>
-      <td>${SkoolUI.esc(s.parent_phone || "")}</td>
-    </tr>`).join("")}</tbody></table>`;
+  var html = '<div class="tbl-wrap"><table class="tbl">';
+  html += '<thead><tr><th>Name</th><th>Class</th><th>Roll</th><th>Parent</th><th></th></tr></thead><tbody>';
+  for (var i = 0; i < rows.length; i++) {
+    var s = rows[i];
+    html += '<tr>'
+      + '<td data-l="Name"><strong>' + SkoolUI.esc(s.name) + '</strong></td>'
+      + '<td data-l="Class">' + SkoolUI.esc(s.class) + '-' + SkoolUI.esc(s.section) + '</td>'
+      + '<td data-l="Roll">' + SkoolUI.esc(s.roll_no) + '</td>'
+      + '<td data-l="Parent">' + SkoolUI.esc(s.parent_name || "") + ' ' + SkoolUI.esc(s.parent_phone || "") + '</td>'
+      + '<td class="row-actions">'
+        + '<button class="secondary" data-edit="' + SkoolUI.esc(s.student_id) + '">Edit</button> '
+        + '<button class="danger" data-del="' + SkoolUI.esc(s.student_id) + '">Delete</button>'
+      + '</td></tr>';
+  }
+  html += '</tbody></table></div>';
+  list.innerHTML = html;
 }
+
 document.getElementById("q").oninput = render;
 
-document.getElementById("f").addEventListener("submit", async (e) => {
+list.addEventListener("click", async function (e) {
+  var ed = e.target.getAttribute && e.target.getAttribute("data-edit");
+  var dl = e.target.getAttribute && e.target.getAttribute("data-del");
+  if (ed) {
+    var s = DATA.find(function (x) { return x.student_id == ed; });
+    if (!s) return;
+    form.student_id.value = s.student_id || "";
+    form.name.value = s.name || "";
+    form.roll_no.value = s.roll_no || "";
+    form.class.value = s.class || "";
+    form.section.value = s.section || "";
+    form.dob.value = s.dob || "";
+    form.parent_name.value = s.parent_name || "";
+    form.parent_phone.value = s.parent_phone || "";
+    form.parent_user_id.value = s.parent_user_id || "";
+    form.parent_username.value = "";
+    form.parent_password.value = "";
+    form.photo_url.value = s.photo_url || "";
+    formTitle.textContent = "Edit Student — " + s.name;
+    cancelBtn.style.display = "";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } else if (dl) {
+    var s2 = DATA.find(function (x) { return x.student_id == dl; });
+    if (!s2) return;
+    if (!confirm('Delete student "' + s2.name + '" (Class ' + s2.class + '-' + s2.section + ', Roll ' + s2.roll_no + ')?')) return;
+    try {
+      await SkoolAPI.api("students.delete", { student_id: s2.student_id });
+      SkoolUI.toast("Deleted", "ok"); load();
+    } catch (err) { SkoolUI.toast("Failed: " + err.message, "err"); }
+  }
+});
+
+cancelBtn.onclick = resetForm;
+function resetForm() {
+  form.reset();
+  form.student_id.value = "";
+  formTitle.textContent = "Add Student";
+  cancelBtn.style.display = "none";
+}
+
+form.addEventListener("submit", async function (e) {
   e.preventDefault();
-  const fd = new FormData(e.target);
-  const student = {};
-  const extras = { parent_username: "", parent_password: "" };
-  fd.forEach((v, k) => {
-    if (!v) return;
+  if (inFlight) return;
+  inFlight = true;
+  saveBtn.disabled = true;
+  var oldText = saveBtn.textContent;
+  saveBtn.textContent = "Saving…";
+
+  var fd = new FormData(form);
+  var student = {};
+  var extras = { parent_username: "", parent_password: "" };
+  fd.forEach(function (v, k) {
+    if (v === "" || v == null) return;
     if (k in extras) extras[k] = v;
     else student[k] = v;
   });
+
   try {
-    await SkoolAPI.api("students.upsert", { student, ...extras });
+    await SkoolAPI.api("students.upsert", Object.assign({ student: student }, extras));
     SkoolUI.toast(extras.parent_username ? "Saved + parent login created" : "Saved", "ok");
-    e.target.reset(); load();
-  } catch (err) { SkoolUI.toast("Failed: " + err.message, "err"); }
+    resetForm();
+    await load();
+  } catch (err) {
+    SkoolUI.toast("Failed: " + err.message, "err");
+  } finally {
+    inFlight = false;
+    saveBtn.disabled = false;
+    saveBtn.textContent = oldText;
+  }
 });
 load();
 </script>

@@ -14,10 +14,10 @@
 
 <div class="app">
   <div class="card">
-    <h2>Add Staff</h2>
-    <form id="f">
+    <h2 id="formTitle">Add Staff</h2>
+    <form id="f" autocomplete="off">
+      <input type="hidden" name="staff_id" />
       <div class="row">
-        <input name="staff_id" placeholder="ID (leave blank)" />
         <input name="name" placeholder="Name" required />
         <input name="role" placeholder="Role (teacher / accountant)" />
       </div>
@@ -28,7 +28,7 @@
         <input name="email" placeholder="Email" />
       </div>
       <div style="height:14px"></div>
-      <div class="muted" style="font-size:13px">Login (optional — creates a teacher user)</div>
+      <div class="muted" style="font-size:13px">Login (optional — leave blank when editing if already created)</div>
       <div style="height:6px"></div>
       <div class="row">
         <input name="username" placeholder="Login username" autocomplete="off" />
@@ -41,8 +41,11 @@
         <input name="class" placeholder="Class (e.g. 5)" />
         <input name="section" placeholder="Section (e.g. B)" />
       </div>
-      <div style="height:10px"></div>
-      <button type="submit">Save</button>
+      <div style="height:12px"></div>
+      <div class="row">
+        <button type="submit" id="saveBtn">Save</button>
+        <button type="button" id="cancelBtn" class="secondary" style="display:none">Cancel edit</button>
+      </div>
     </form>
   </div>
 
@@ -56,37 +59,112 @@
 SkoolAuth.require(["admin"]);
 SkoolUI.topbar("Staff");
 
+var list = document.getElementById("list");
+var form = document.getElementById("f");
+var saveBtn = document.getElementById("saveBtn");
+var cancelBtn = document.getElementById("cancelBtn");
+var formTitle = document.getElementById("formTitle");
+var DATA = [];
+var inFlight = false;
+
 async function load() {
   try {
-    const d = await SkoolAPI.api("staff.list", {});
-    const list = document.getElementById("list");
-    if (!d.staff.length) { list.textContent = "No staff yet."; return; }
-    list.innerHTML = `<table style="width:100%;border-collapse:collapse">
-      <thead><tr><th align="left">Name</th><th>Role</th><th>Subject</th><th>Phone</th></tr></thead>
-      <tbody>${d.staff.map(s => `<tr style="border-top:1px solid #eef2f7">
-        <td style="padding:6px 0">${SkoolUI.esc(s.name)}</td>
-        <td>${SkoolUI.esc(s.role || "")}</td>
-        <td>${SkoolUI.esc(s.subject || "")}</td>
-        <td>${SkoolUI.esc(s.phone || "")}</td>
-      </tr>`).join("")}</tbody></table>`;
-  } catch (e) { document.getElementById("list").textContent = "Failed: " + e.message; }
+    var d = await SkoolAPI.api("staff.list", {});
+    DATA = d.staff || [];
+    render();
+  } catch (e) { list.textContent = "Failed: " + e.message; }
 }
 
-document.getElementById("f").addEventListener("submit", async (e) => {
+function render() {
+  if (!DATA.length) { list.textContent = "No staff yet."; return; }
+  var html = '<div class="tbl-wrap"><table class="tbl">';
+  html += '<thead><tr><th>Name</th><th>Role</th><th>Subject</th><th>Class</th><th>Login</th><th>Phone</th><th></th></tr></thead><tbody>';
+  for (var i = 0; i < DATA.length; i++) {
+    var s = DATA[i];
+    var cls = (s.class && s.section) ? (SkoolUI.esc(s.class) + "-" + SkoolUI.esc(s.section)) : "";
+    html += '<tr>'
+      + '<td data-l="Name"><strong>' + SkoolUI.esc(s.name) + '</strong></td>'
+      + '<td data-l="Role">' + SkoolUI.esc(s.role || "") + '</td>'
+      + '<td data-l="Subject">' + SkoolUI.esc(s.subject || "") + '</td>'
+      + '<td data-l="Class">' + cls + '</td>'
+      + '<td data-l="Login">' + SkoolUI.esc(s.username || "") + '</td>'
+      + '<td data-l="Phone">' + SkoolUI.esc(s.phone || "") + '</td>'
+      + '<td class="row-actions">'
+        + '<button class="secondary" data-edit="' + SkoolUI.esc(s.staff_id) + '">Edit</button> '
+        + '<button class="danger" data-del="' + SkoolUI.esc(s.staff_id) + '">Delete</button>'
+      + '</td></tr>';
+  }
+  html += '</tbody></table></div>';
+  list.innerHTML = html;
+}
+
+list.addEventListener("click", async function (e) {
+  var ed = e.target.getAttribute && e.target.getAttribute("data-edit");
+  var dl = e.target.getAttribute && e.target.getAttribute("data-del");
+  if (ed) {
+    var s = DATA.find(function (x) { return x.staff_id == ed; });
+    if (!s) return;
+    form.staff_id.value = s.staff_id || "";
+    form.name.value = s.name || "";
+    form.role.value = s.role || "";
+    form.subject.value = s.subject || "";
+    form.phone.value = s.phone || "";
+    form.email.value = s.email || "";
+    form.username.value = "";
+    form.password.value = "";
+    form.class.value = s.class || "";
+    form.section.value = s.section || "";
+    formTitle.textContent = "Edit Staff — " + s.name;
+    cancelBtn.style.display = "";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } else if (dl) {
+    var s2 = DATA.find(function (x) { return x.staff_id == dl; });
+    if (!s2) return;
+    if (!confirm('Delete staff "' + s2.name + '"? This also removes their login.')) return;
+    try {
+      await SkoolAPI.api("staff.delete", { staff_id: s2.staff_id });
+      SkoolUI.toast("Deleted", "ok"); load();
+    } catch (err) { SkoolUI.toast("Failed: " + err.message, "err"); }
+  }
+});
+
+cancelBtn.onclick = resetForm;
+function resetForm() {
+  form.reset();
+  form.staff_id.value = "";
+  formTitle.textContent = "Add Staff";
+  cancelBtn.style.display = "none";
+}
+
+form.addEventListener("submit", async function (e) {
   e.preventDefault();
-  const fd = new FormData(e.target);
-  const staff = {};
-  const extras = { username: "", password: "", class: "", section: "" };
-  fd.forEach((v, k) => {
-    if (!v) return;
+  if (inFlight) return;
+  inFlight = true;
+  saveBtn.disabled = true;
+  var oldText = saveBtn.textContent;
+  saveBtn.textContent = "Saving…";
+
+  var fd = new FormData(form);
+  var staff = {};
+  var extras = { username: "", password: "", "class": "", section: "" };
+  fd.forEach(function (v, k) {
+    if (v === "" || v == null) return;
     if (k in extras) extras[k] = v;
     else staff[k] = v;
   });
+
   try {
-    await SkoolAPI.api("staff.upsert", { staff, ...extras });
+    await SkoolAPI.api("staff.upsert", Object.assign({ staff: staff }, extras));
     SkoolUI.toast(extras.username ? "Saved + login created" : "Saved", "ok");
-    e.target.reset(); load();
-  } catch (err) { SkoolUI.toast("Failed: " + err.message, "err"); }
+    resetForm();
+    await load();
+  } catch (err) {
+    SkoolUI.toast("Failed: " + err.message, "err");
+  } finally {
+    inFlight = false;
+    saveBtn.disabled = false;
+    saveBtn.textContent = oldText;
+  }
 });
 load();
 </script>

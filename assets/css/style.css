@@ -99,3 +99,32 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--brand);outline-o
   body{background:#fff}
   .idcard{page-break-after:always}
 }
+
+/* ----- Responsive data tables (admin lists) ----- */
+.tbl-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th,.tbl td{padding:10px 8px;text-align:left;vertical-align:top}
+.tbl thead th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;
+  border-bottom:1px solid var(--border)}
+.tbl tbody tr{border-top:1px solid #eef2f7}
+.row-actions{white-space:nowrap;text-align:right}
+.row-actions button{padding:8px 12px;min-height:36px;font-size:13px;margin-left:6px}
+
+/* On phones, fold each table row into a card-style stack with field labels. */
+@media (max-width:640px){
+  .tbl,.tbl thead,.tbl tbody,.tbl tr,.tbl td{display:block;width:100%}
+  .tbl thead{display:none}
+  .tbl tbody tr{padding:10px 4px;border-top:1px solid var(--border)}
+  .tbl td{padding:4px 0;border:0;display:flex;justify-content:space-between;gap:10px}
+  .tbl td::before{content:attr(data-l);color:var(--muted);font-size:12px;
+    text-transform:uppercase;letter-spacing:.04em;flex:0 0 90px}
+  .tbl td.row-actions{justify-content:flex-end;padding-top:8px}
+  .tbl td.row-actions::before{display:none}
+  .row-actions button{margin-left:0;margin-right:6px}
+  .topbar{flex-wrap:wrap;gap:6px;padding:10px 12px}
+  .topbar .who{font-size:13px;width:100%;order:3}
+  .app{padding:12px}
+  .card{padding:14px}
+  .card h2{font-size:17px}
+  button{padding:12px 14px}
+}

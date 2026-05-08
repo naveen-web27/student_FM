@@ -49,9 +49,11 @@ const ROUTES = {
   // Students / Staff
   'students.list':              studentsList_,
   'students.upsert':            studentsUpsert_,
+  'students.delete':            studentsDelete_,
   'students.byParent':          studentsByParent_,
   'staff.list':                 staffList_,
   'staff.upsert':               staffUpsert_,
+  'staff.delete':               staffDelete_,
 
   // Attendance
   'attendance.getClassRoster':  attGetRoster_,
