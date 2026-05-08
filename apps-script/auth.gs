@@ -135,3 +135,30 @@ function seedAdmin() {
     'admin', '', 'School Admin', 'active', 0, ''
   ]);
 }
+
+/**
+ * Create a new user row in the Users sheet.
+ * Used by admin flows (create teacher / parent login from the dashboard).
+ * Returns { ok: true } on success, { ok:false, error } on failure.
+ */
+function createUser_(u) {
+  if (!u || !u.username || !u.password || !u.role || !u.user_id) {
+    return { ok: false, error: 'MISSING_USER_FIELDS' };
+  }
+  if (findUser_(u.username)) return { ok: false, error: 'USERNAME_TAKEN' };
+  const sh = getSheet_(SHEETS.USERS);
+  const salt = Utilities.getUuid();
+  sh.appendRow([
+    u.user_id,
+    u.username,
+    hashPassword_(u.password, salt),
+    salt,
+    u.role,
+    u.linked_id || '',
+    u.name || u.username,
+    'active',
+    0,
+    ''
+  ]);
+  return { ok: true };
+}

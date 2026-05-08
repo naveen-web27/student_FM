@@ -70,20 +70,23 @@ In the Apps Script editor:
 2. GitHub repo → Settings → Pages → Source: `main` branch, `/ (root)`.
 3. Open: `https://<your-user>.github.io/<repo>/school_facility_management/index.html`.
 
-### 7. Add data
-Open the Google Sheet and add:
-- A **teacher** in `Users` (role = `teacher`, set `linked_id` = staff_id from `Staff` sheet).
-  - Easiest: in Apps Script editor run a one-off snippet to create a hashed user, e.g.:
-    ```js
-    function addTeacher() {
-      const salt = Utilities.getUuid();
-      getSheet_('Users').appendRow(['U002','priya', hashPassword_('priya@123', salt), salt,'teacher','T001','Mrs. Priya','active',0,'']);
-      getSheet_('Staff').appendRow(['T001','Mrs. Priya','teacher','English','9999999999','priya@x.com','','active']);
-      getSheet_('ClassTeacher').appendRow(['T001','5','B']);
-    }
-    ```
-- Some students in `Students` (`class`, `section`, `roll_no`, `parent_user_id`).
-- A **parent** user in `Users` whose `user_id` matches `parent_user_id`.
+### 7. Add data — all from the dashboard
+Log in as **admin** (`admin` / `admin@123`) and use the admin pages.
+No more script editing or sheet hacking.
+
+1. **Add staff / teachers** → Admin → *Staff*
+   - Fill name, role (`teacher`), subject, etc.
+   - In the same form, set a **login username + initial password** to create the
+     teacher's login automatically.
+   - Set **class + section** to register them as that class's teacher.
+
+2. **Add students** → Admin → *Students*
+   - Fill name, class, section, roll no.
+   - In the same form, set a **parent login username + initial password** to
+     create the parent account and link it to the student automatically.
+   - (If a parent already has a login, just enter the existing `parent_user_id`.)
+
+That's it — teachers and parents can now log in from `index.html`.
 
 ### 8. (Recommended) Nightly summary trigger
 In Apps Script: **Triggers (⏰) → Add Trigger**
@@ -95,11 +98,11 @@ This keeps parent home page snappy on big schools.
 ---
 
 ## Logins to try after setup
-| Role    | Username | Password    |
-|---------|----------|-------------|
-| Admin   | admin    | admin@123   |
-| Teacher | priya    | priya@123   |
-| Parent  | (create) | (create)    |
+| Role    | Username        | Password                   |
+|---------|-----------------|----------------------------|
+| Admin   | admin           | admin@123                  |
+| Teacher | (create in Admin → Staff)    | (the one you set) |
+| Parent  | (create in Admin → Students) | (the one you set) |
 
 ---
 

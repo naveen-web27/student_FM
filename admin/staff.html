@@ -27,6 +27,20 @@
         <input name="phone" placeholder="Phone" />
         <input name="email" placeholder="Email" />
       </div>
+      <div style="height:14px"></div>
+      <div class="muted" style="font-size:13px">Login (optional — creates a teacher user)</div>
+      <div style="height:6px"></div>
+      <div class="row">
+        <input name="username" placeholder="Login username" autocomplete="off" />
+        <input name="password" type="text" placeholder="Initial password" autocomplete="new-password" />
+      </div>
+      <div style="height:8px"></div>
+      <div class="muted" style="font-size:13px">Class teacher of (optional)</div>
+      <div style="height:6px"></div>
+      <div class="row">
+        <input name="class" placeholder="Class (e.g. 5)" />
+        <input name="section" placeholder="Section (e.g. B)" />
+      </div>
       <div style="height:10px"></div>
       <button type="submit">Save</button>
     </form>
@@ -60,10 +74,19 @@ async function load() {
 
 document.getElementById("f").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const fd = new FormData(e.target); const obj = {};
-  fd.forEach((v, k) => { if (v) obj[k] = v; });
-  try { await SkoolAPI.api("staff.upsert", { staff: obj }); SkoolUI.toast("Saved", "ok"); e.target.reset(); load(); }
-  catch (err) { SkoolUI.toast("Failed: " + err.message, "err"); }
+  const fd = new FormData(e.target);
+  const staff = {};
+  const extras = { username: "", password: "", class: "", section: "" };
+  fd.forEach((v, k) => {
+    if (!v) return;
+    if (k in extras) extras[k] = v;
+    else staff[k] = v;
+  });
+  try {
+    await SkoolAPI.api("staff.upsert", { staff, ...extras });
+    SkoolUI.toast(extras.username ? "Saved + login created" : "Saved", "ok");
+    e.target.reset(); load();
+  } catch (err) { SkoolUI.toast("Failed: " + err.message, "err"); }
 });
 load();
 </script>

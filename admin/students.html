@@ -29,9 +29,16 @@
       </div>
       <div style="height:8px"></div>
       <div class="row">
-        <input name="parent_user_id" placeholder="Parent user_id (in Users sheet)" />
+        <input name="parent_user_id" placeholder="Existing parent user_id (optional)" />
         <input name="parent_name" placeholder="Parent name" />
         <input name="parent_phone" placeholder="Parent phone" />
+      </div>
+      <div style="height:8px"></div>
+      <div class="muted" style="font-size:13px">Or create a parent login here (recommended)</div>
+      <div style="height:6px"></div>
+      <div class="row">
+        <input name="parent_username" placeholder="Parent login username" autocomplete="off" />
+        <input name="parent_password" type="text" placeholder="Initial password" autocomplete="new-password" />
       </div>
       <div style="height:8px"></div>
       <input name="photo_url" placeholder="Photo URL (Drive / public)" />
@@ -81,11 +88,16 @@ document.getElementById("q").oninput = render;
 document.getElementById("f").addEventListener("submit", async (e) => {
   e.preventDefault();
   const fd = new FormData(e.target);
-  const obj = {};
-  fd.forEach((v, k) => { if (v) obj[k] = v; });
+  const student = {};
+  const extras = { parent_username: "", parent_password: "" };
+  fd.forEach((v, k) => {
+    if (!v) return;
+    if (k in extras) extras[k] = v;
+    else student[k] = v;
+  });
   try {
-    await SkoolAPI.api("students.upsert", { student: obj });
-    SkoolUI.toast("Saved", "ok");
+    await SkoolAPI.api("students.upsert", { student, ...extras });
+    SkoolUI.toast(extras.parent_username ? "Saved + parent login created" : "Saved", "ok");
     e.target.reset(); load();
   } catch (err) { SkoolUI.toast("Failed: " + err.message, "err"); }
 });
